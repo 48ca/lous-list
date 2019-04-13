@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 import argparse
 from sys import argv, exit
+from socket import gaierror
 
 lous_list = "https://rabi.phys.virginia.edu/mySIS/CS2"
 list_url =  "{}/{}".format(lous_list, "index.php")
@@ -32,7 +33,12 @@ def pull_groups(sem):
 
     return sorted(all_groups)
 
-groups = pull_groups(args.semester)
+try:
+    groups = pull_groups(args.semester)
+except gaierror as e:
+    print(e)
+    print("Error connecting to Lou's List")
+    exit(1)
 
 if not args.group:
     print(groups)
@@ -52,16 +58,23 @@ params = {
 }
 
 def get_section_info(s):
-    ret = {}
     if not s.td:
         return None
     a = s.td.select_one('a.Link')
     if not a:
         return None
 
-    print("Found ", a.text)
+    tds = s.find_all('td')
 
-    ret["id"] = a.text
+    return {
+        "id": a.text,
+        "num": tds[1].text,
+        "status": tds[3].text,
+        "occupancy": tds[4].a.text,
+        "instructor": tds[5].find('span').text,
+        "time": tds[6].text,
+        "room": tds[7].text
+    }
 
 def pull():
     r = requests.get(page_url, params = params)
@@ -70,11 +83,19 @@ def pull():
     courses_info = {}
     for c in courses:
         name = c.span.text
-        print(name)
+        print("> COURSE:", name)
 
         sections = soup.select('tr.S.{}'.format(name.replace(" ", "")))
 
         parsed_sections = [ get_section_info(s) for s in sections ]
+        parsed_sections = list(filter(None.__ne__, parsed_sections))
+
+        print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format('ID', 'Num', 'Status', 'Occ', 'Instr', 'Time', 'Room'))
+        for s in parsed_sections:
+            print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format(
+                s["id"], s["num"], s["status"], s["occupancy"], s["instructor"],
+                s["time"], s["room"]
+                ))
 
         courses_info[c.span.text] = { }
 
