@@ -145,7 +145,7 @@ def notify(ids):
 def check_occ_diff(c1, c2):
     if c1.keys() != c2.keys():
         print("!!! Sections have changed!")
-        return c2.keys()
+        return list(c2.keys())
 
     ids = []
     for id in c1:
