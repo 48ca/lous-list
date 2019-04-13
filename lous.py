@@ -83,23 +83,42 @@ def pull():
     courses_info = {}
     for c in courses:
         name = c.span.text
-        print("> COURSE:", name)
 
         sections = soup.select('tr.S.{}'.format(name.replace(" ", "")))
 
         parsed_sections = [ get_section_info(s) for s in sections ]
         parsed_sections = list(filter(None.__ne__, parsed_sections))
 
+        courses_info[c.span.text] = { s["id"]: s for s in parsed_sections }
+
+    return courses_info
+
+info = pull()
+
+if not args.course:
+    for cname in info:
+        course = info[cname]
+        print(" ******** {} ******** ".format(cname))
         print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format('ID', 'Num', 'Status', 'Occ', 'Instr', 'Time', 'Room'))
-        for s in parsed_sections:
+        for id in course:
+            s = course[id]
             print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format(
                 s["id"], s["num"], s["status"], s["occupancy"], s["instructor"],
                 s["time"], s["room"]
                 ))
+else:
+    if args.course not in info:
+        print("Invalid course given")
+        exit(1)
 
-        courses_info[c.span.text] = { }
-
-pull()
+    c = info[args.course]
+    print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format('ID', 'Num', 'Status', 'Occ', 'Instr', 'Time', 'Room'))
+    for id in c:
+        s = c[id]
+        print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format(
+            s["id"], s["num"], s["status"], s["occupancy"], s["instructor"],
+            s["time"], s["room"]
+            ))
 
 
 # vim: set expandtab:ts=4:sw=4
