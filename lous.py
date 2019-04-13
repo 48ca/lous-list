@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup as bs
 import argparse
 from sys import argv, exit
 from socket import gaierror
+from time import sleep
 
 lous_list = "https://rabi.phys.virginia.edu/mySIS/CS2"
 list_url =  "{}/{}".format(lous_list, "index.php")
@@ -14,6 +15,7 @@ parser = argparse.ArgumentParser(description="CLI and notifier for Lou's list")
 parser.add_argument('-g', '--group')
 parser.add_argument('-c', '--course')
 parser.add_argument('-s', '--semester', default=1198)
+parser.add_argument('-n', '--notify', action='store_const', const=True, default=False)
 args = parser.parse_args(argv[1:])
 
 ## Check if given group is valid
@@ -41,12 +43,14 @@ except gaierror as e:
     exit(1)
 
 if not args.group:
-    print(groups)
+    for g in groups:
+        print(g)
     exit(0)
 
 if args.group not in groups:
     print("Group was not found in list of valid groups")
-    print(groups)
+    for g in groups:
+        print(g)
     exit(0)
 
 ## Pull course list and data
@@ -95,30 +99,64 @@ def pull():
 
 info = pull()
 
-if not args.course:
-    for cname in info:
-        course = info[cname]
-        print(" ******** {} ******** ".format(cname))
-        print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format('ID', 'Num', 'Status', 'Occ', 'Instr', 'Time', 'Room'))
-        for id in course:
-            s = course[id]
-            print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format(
-                s["id"], s["num"], s["status"], s["occupancy"], s["instructor"],
-                s["time"], s["room"]
-                ))
-else:
-    if args.course not in info:
-        print("Invalid course given")
-        exit(1)
-
-    c = info[args.course]
+def print_course(course):
     print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format('ID', 'Num', 'Status', 'Occ', 'Instr', 'Time', 'Room'))
-    for id in c:
-        s = c[id]
+    for id in course:
+        s = course[id]
         print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format(
             s["id"], s["num"], s["status"], s["occupancy"], s["instructor"],
             s["time"], s["room"]
             ))
 
+if not args.course:
+    for cname in info:
+        course = info[cname]
+        print(" ******** {} ******** ".format(cname))
+        print_course(course)
+    exit(0)
+
+if args.course not in info:
+    print("Invalid course given")
+    exit(1)
+
+new_c = info[args.course]
+print_course(new_c)
+
+if not args.notify:
+    exit(0)
+
+def notify(ids):
+    print("Notifying about changes in IDs", ids)
+
+def check_occ_diff(c1, c2):
+    if c1.keys() != c2.keys():
+        print("!!! Sections have changed!")
+        return c2.keys()
+
+    ids = []
+    for id in c1:
+        if c1[id]["occupancy"] != c2[id]["occupancy"]:
+            ids.append(id)
+            s = c2[id]
+            print("{:<8} {:<15} {:<20} {:<20} {:<20} {:<30} {:<10}".format(
+                s["id"], s["num"], s["status"], s["occupancy"], s["instructor"],
+                s["time"], s["room"]
+                ))
+    return ids
+
+old_c = new_c
+
+try:
+    while True:
+        sleep(10)
+        info = pull()
+        new_c = info[args.course]
+        ids = check_occ_diff(old_c, new_c)
+        if len(ids) > 0:
+            notify(ids)
+
+        old_c = new_c
+except KeyboardInterrupt:
+    pass
 
 # vim: set expandtab:ts=4:sw=4
