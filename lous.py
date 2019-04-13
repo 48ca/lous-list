@@ -6,6 +6,7 @@ import argparse
 from sys import argv, exit
 from socket import gaierror
 from time import sleep
+from random import randint
 
 from notifications.messenger import MessengerNotifier
 from dotenv import load_dotenv
@@ -168,7 +169,7 @@ old_c = new_c
 
 try:
     while True:
-        sleep(10)
+        sleep(randint(10, 40))
         info = pull()
         new_c = info[args.course]
         ids = check_occ_diff(old_c, new_c)
