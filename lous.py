@@ -7,6 +7,11 @@ from sys import argv, exit
 from socket import gaierror
 from time import sleep
 
+from notifications.messenger import MessengerNotifier
+from dotenv import load_dotenv
+from os.path import join, dirname, exists
+from os import environ, getenv
+
 lous_list = "https://rabi.phys.virginia.edu/mySIS/CS2"
 list_url =  "{}/{}".format(lous_list, "index.php")
 page_url =  "{}/{}".format(lous_list, "page.php")
@@ -128,6 +133,15 @@ if not args.notify:
 def notify(ids):
     print("Notifying about changes in IDs", ids)
 
+    # Start messenger notifier
+    fbm_settings = {
+        'email': getenv("MESSENGER_EMAIL"),
+        'password': getenv("MESSENGER_PASSWORD")
+    }
+    fbm = MessengerNotifier(**fbm_settings)
+    fbm.notify("{}: {}".format(args.course, ids))
+    fbm.logout()
+
 def check_occ_diff(c1, c2):
     if c1.keys() != c2.keys():
         print("!!! Sections have changed!")
@@ -143,6 +157,12 @@ def check_occ_diff(c1, c2):
                 s["time"], s["room"]
                 ))
     return ids
+
+dotenv_path = join(dirname(__file__), 'conf.env')
+if not exists(dotenv_path):
+    print("No conf.env found... loading example")
+    dotenv_path = join(dirname(__file__), 'conf.env.example')
+load_dotenv(dotenv_path)
 
 old_c = new_c
 
